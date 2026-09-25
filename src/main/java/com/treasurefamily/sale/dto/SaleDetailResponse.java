@@ -9,5 +9,7 @@ public record SaleDetailResponse(
         BigDecimal revenue,
         BigDecimal profit,
         int soldQty,
+        BigDecimal cashRevenue,
+        BigDecimal cardRevenue,
         List<SaleOrderView> orders) {
 }

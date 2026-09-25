@@ -10,7 +10,9 @@ public interface GoodsRepository extends JpaRepository<Goods, String> {
 
     Optional<Goods> findByIdAndOwnerId(String id, String ownerId);
 
-    boolean existsByIdAndOwnerId(String id, String ownerId);
+    Optional<Goods> findByOwnerIdAndBarcode(String ownerId, String barcode);
 
-    void deleteByOwnerId(String ownerId);
+    boolean existsByOwnerIdAndBarcode(String ownerId, String barcode);
+
+    boolean existsByIdAndOwnerId(String id, String ownerId);
 }

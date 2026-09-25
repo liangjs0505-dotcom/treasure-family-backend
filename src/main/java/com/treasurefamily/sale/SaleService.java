@@ -97,6 +97,7 @@ public class SaleService {
         sale.setRevenue(revenue);
         sale.setProfit(profit);
         sale.setSoldQty(soldQty);
+        sale.setPayMethod(request.payMethod().name());
         saleRepository.save(sale);
         return today();
     }
@@ -108,13 +109,21 @@ public class SaleService {
         List<Sale> sales = saleRepository.findByOwnerIdAndCreatedAtGreaterThanEqual(ownerId, start);
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal profit = BigDecimal.ZERO;
+        BigDecimal cashRevenue = BigDecimal.ZERO;
+        BigDecimal cardRevenue = BigDecimal.ZERO;
         int soldQty = 0;
         for (Sale sale : sales) {
-            revenue = revenue.add(sale.getRevenue() == null ? BigDecimal.ZERO : sale.getRevenue());
+            BigDecimal saleRevenue = sale.getRevenue() == null ? BigDecimal.ZERO : sale.getRevenue();
+            revenue = revenue.add(saleRevenue);
             profit = profit.add(sale.getProfit() == null ? BigDecimal.ZERO : sale.getProfit());
             soldQty += sale.getSoldQty() == null ? 0 : sale.getSoldQty();
+            if (PayMethod.CASH.name().equals(sale.getPayMethod())) {
+                cashRevenue = cashRevenue.add(saleRevenue);
+            } else if (PayMethod.CARD.name().equals(sale.getPayMethod())) {
+                cardRevenue = cardRevenue.add(saleRevenue);
+            }
         }
-        return new TodaySummaryResponse(revenue, profit, sales.size(), soldQty);
+        return new TodaySummaryResponse(revenue, profit, sales.size(), soldQty, cashRevenue, cardRevenue);
     }
 
     @Transactional(readOnly = true)
@@ -276,6 +285,8 @@ public class SaleService {
 
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal profit = BigDecimal.ZERO;
+        BigDecimal cashRevenue = BigDecimal.ZERO;
+        BigDecimal cardRevenue = BigDecimal.ZERO;
         int soldQty = 0;
         List<SaleOrderView> orders = new ArrayList<>();
         for (Sale sale : sales) {
@@ -285,6 +296,11 @@ public class SaleService {
             revenue = revenue.add(saleRevenue);
             profit = profit.add(saleProfit);
             soldQty += qty;
+            if (PayMethod.CASH.name().equals(sale.getPayMethod())) {
+                cashRevenue = cashRevenue.add(saleRevenue);
+            } else if (PayMethod.CARD.name().equals(sale.getPayMethod())) {
+                cardRevenue = cardRevenue.add(saleRevenue);
+            }
             List<SaleLineView> lines = linesBySale.getOrDefault(sale.getId(), List.of()).stream()
                     .map(line -> new SaleLineView(
                             line.getName(),
@@ -292,9 +308,11 @@ public class SaleService {
                             line.getPrice() == null ? BigDecimal.ZERO : line.getPrice(),
                             line.getCost() == null ? BigDecimal.ZERO : line.getCost()))
                     .toList();
-            orders.add(new SaleOrderView(sale.getId(), sale.getCreatedAt(), saleRevenue, saleProfit, qty, lines));
+            orders.add(new SaleOrderView(
+                    sale.getId(), sale.getCreatedAt(), saleRevenue, saleProfit, qty, sale.getPayMethod(), lines));
         }
-        return new SaleDetailResponse(from.toString(), to.toString(), revenue, profit, soldQty, orders);
+        return new SaleDetailResponse(
+                from.toString(), to.toString(), revenue, profit, soldQty, cashRevenue, cardRevenue, orders);
     }
 
     private List<Bucket> weekBuckets(LocalDate today) {

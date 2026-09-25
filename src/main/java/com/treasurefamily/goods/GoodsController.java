@@ -1,8 +1,10 @@
 package com.treasurefamily.goods;
 
 import com.treasurefamily.common.ApiResponse;
+import com.treasurefamily.goods.dto.BarcodeLookupResponse;
 import com.treasurefamily.goods.dto.GoodsRequest;
 import com.treasurefamily.goods.dto.GoodsResponse;
+import com.treasurefamily.goods.dto.IssuedBarcodeResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +36,16 @@ public class GoodsController {
         return ApiResponse.ok(goodsService.list(keyword, category, onlyLow, sortBy));
     }
 
+    @GetMapping("/by-barcode")
+    public ApiResponse<BarcodeLookupResponse> lookup(@RequestParam String barcode) {
+        return ApiResponse.ok(goodsService.lookup(barcode));
+    }
+
+    @PostMapping("/internal-barcode")
+    public ApiResponse<IssuedBarcodeResponse> issueInternal() {
+        return ApiResponse.ok(goodsService.issueInternal());
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<GoodsResponse> getById(@PathVariable String id) {
         return ApiResponse.ok(goodsService.getById(id));
@@ -56,9 +68,4 @@ public class GoodsController {
         return ApiResponse.ok("删除成功", null);
     }
 
-    @DeleteMapping
-    public ApiResponse<Void> clearAll() {
-        goodsService.clearAll();
-        return ApiResponse.ok("已清空", null);
-    }
 }

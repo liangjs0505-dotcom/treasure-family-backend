@@ -9,5 +9,6 @@ public record SaleOrderView(
         BigDecimal revenue,
         BigDecimal profit,
         Integer soldQty,
+        String payMethod,
         List<SaleLineView> lines) {
 }

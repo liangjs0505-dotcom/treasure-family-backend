@@ -34,6 +34,9 @@ public class Sale {
     @Column(name = "sold_qty", nullable = false)
     private Integer soldQty;
 
+    @Column(name = "pay_method", length = 8)
+    private String payMethod;
+
     @PrePersist
     void prePersist() {
         if (id == null || id.isBlank()) {
@@ -90,5 +93,13 @@ public class Sale {
 
     public void setSoldQty(Integer soldQty) {
         this.soldQty = soldQty;
+    }
+
+    public String getPayMethod() {
+        return payMethod;
+    }
+
+    public void setPayMethod(String payMethod) {
+        this.payMethod = payMethod;
     }
 }

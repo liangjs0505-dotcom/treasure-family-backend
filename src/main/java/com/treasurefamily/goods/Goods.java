@@ -14,7 +14,10 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "goods",
-        indexes = @Index(name = "idx_goods_owner_id", columnList = "owner_id"))
+        indexes = {
+            @Index(name = "idx_goods_owner_id", columnList = "owner_id"),
+            @Index(name = "idx_goods_owner_barcode", columnList = "owner_id, barcode")
+        })
 public class Goods {
 
     @Id
@@ -23,6 +26,9 @@ public class Goods {
 
     @Column(name = "owner_id", length = 36)
     private String ownerId;
+
+    @Column(length = 13)
+    private String barcode;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -103,6 +109,14 @@ public class Goods {
 
     public void setOwnerId(String ownerId) {
         this.ownerId = ownerId;
+    }
+
+    public String getBarcode() {
+        return barcode;
+    }
+
+    public void setBarcode(String barcode) {
+        this.barcode = barcode;
     }
 
     public String getName() {

@@ -10,6 +10,7 @@ public final class GoodsMapper {
     }
 
     public static void apply(Goods goods, GoodsRequest request) {
+        goods.setBarcode(request.barcode().trim());
         goods.setName(request.name().trim());
         goods.setCategory(request.category());
         goods.setPrice(request.price());
@@ -26,6 +27,7 @@ public final class GoodsMapper {
         BigDecimal cost = goods.getCost() == null ? BigDecimal.ZERO : goods.getCost();
         return new GoodsResponse(
                 goods.getId(),
+                goods.getBarcode() == null ? "" : goods.getBarcode(),
                 goods.getName(),
                 goods.getCategory(),
                 price,

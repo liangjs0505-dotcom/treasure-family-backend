@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 /** 对应前端 Goods，并附带库存状态 */
 public record GoodsResponse(
         String id,
+        String barcode,
         String name,
         Category category,
         BigDecimal price,

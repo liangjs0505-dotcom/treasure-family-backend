@@ -1,8 +1,6 @@
 # Treasure Family Backend（宝藏之家后端）
 
-对应前端项目 `treasure-family-frontend` 的货物管理 API。
-
-当前前端还把数据存在浏览器 `localStorage`。这个后端已经按同样的货物字段和分类提供了接口，之后可以把前端改成请求这里。
+对应前端项目 `treasure-family-frontend`。每个账号只看自己的货。除注册和登录外，接口要带登录令牌。
 
 ## 环境
 
@@ -38,11 +36,17 @@ H2 控制台：http://localhost:8080/h2-console
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/goods` | 货物列表，可选 `keyword`、`category`、`onlyLow`、`sortBy` |
+| GET | `/api/goods/by-barcode` | 按条码查本店货物和公用名称 |
+| POST | `/api/goods/internal-barcode` | 发一张本店店内码 |
 | GET | `/api/goods/{id}` | 货物详情 |
-| POST | `/api/goods` | 新增货物 |
-| PUT | `/api/goods/{id}` | 编辑货物 |
-| DELETE | `/api/goods/{id}` | 删除货物 |
-| DELETE | `/api/goods` | 清空全部货物 |
+| POST | `/api/goods` | 新增货物。售价、进价、入库数量必须大于 0 |
+| PUT | `/api/goods/{id}` | 编辑货物。售价和进价必须大于 0，条码不能改 |
+| DELETE | `/api/goods/{id}` | 删除一件货物 |
+| POST | `/api/checkout` | 结账。`payMethod` 为 `CASH` 或 `CARD`，确认后才扣库存 |
+| GET | `/api/sales/today` | 今日流水，含现金和刷卡 |
+| GET | `/api/sales/compare` | 本周、本月、今年对比，参数 `range` |
+| GET | `/api/sales/ranks` | 畅销和滞销 |
+| GET | `/api/sales/details` | 某一天的明细，参数 `from`、`to`。流水含现金和刷卡 |
 | GET | `/api/stats` | 看板统计 |
 | GET | `/api/stats/categories` | 分类库存价值 |
 | GET | `/api/alerts` | 低库存补货提醒 |
@@ -54,13 +58,25 @@ H2 控制台：http://localhost:8080/h2-console
 
 ```json
 {
+  "barcode": "6901234567892",
   "name": "矿泉水",
   "category": "食品饮料",
   "price": 2.5,
   "stock": 24,
   "unit": "瓶",
   "supplier": "农夫山泉",
+  "cost": 1.2,
+  "purchasePlace": "市场",
   "threshold": 10
+}
+```
+
+结账示例：
+
+```json
+{
+  "payMethod": "CASH",
+  "lines": [{ "goodsId": "货物 id", "qty": 1 }]
 }
 ```
 
@@ -106,6 +122,6 @@ Linux 用 `export` 代替 `set`。安全组 / 防火墙要放行 `8080`，或前
 
 5. 浏览器访问 `http://服务器IP:8080/api/health`，能返回 `Treasure Family Backend` 就说明服务通了。
 
-6. 前端现在还把货物存在浏览器里，**还没有请求这个后端**。后端上线后，还需要把前端改成调用 `http://你的后端地址/api/...`，页面上的数据才会进 MySQL。
+6. 前端开发时请求 `http://localhost:8080/api/...`。线上要让网页请求这台服务器的地址，页面上的数据才会进 MySQL。
 
 常见云数据库填写示例：`MYSQL_HOST` 填 RDS 内网或公网地址，`MYSQL_DATABASE` 填库名，账号密码用控制台创建的那个。
