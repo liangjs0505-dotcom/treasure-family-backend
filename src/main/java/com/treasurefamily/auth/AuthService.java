@@ -12,7 +12,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class AuthService {
@@ -24,17 +27,21 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthProperties properties;
+    private final TransactionTemplate failureTx;
     private final String dummyHash;
 
     public AuthService(
             AppUserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            AuthProperties properties) {
+            AuthProperties properties,
+            PlatformTransactionManager transactionManager) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.properties = properties;
+        this.failureTx = new TransactionTemplate(transactionManager);
+        this.failureTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.dummyHash = passwordEncoder.encode("invalid-password");
     }
 
@@ -90,11 +97,15 @@ public class AuthService {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, GENERIC_ERROR);
         }
         if (user.isLocked()) {
-            throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, "尝试次数过多，请稍后再试");
+            throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, lockMessage(user.getLockedUntil()));
         }
         if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
-            registerFailure(user);
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, GENERIC_ERROR);
+            Failure failure = registerFailure(user.getId());
+            if (failure.locked()) {
+                throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, lockMessage(failure.lockedUntil()));
+            }
+            int left = properties.getMaxFailedAttempts() - failure.failedAttempts();
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "用户名或密码错误，还可以再试 " + left + " 次");
         }
         user.setFailedAttempts(0);
         user.setLockedUntil(null);
@@ -103,14 +114,34 @@ public class AuthService {
         return new LoginResponse(token, "Bearer", jwtService.expiresInSeconds(), user.getUsername());
     }
 
-    private void registerFailure(AppUser user) {
-        int next = user.getFailedAttempts() + 1;
-        user.setFailedAttempts(next);
-        if (next >= properties.getMaxFailedAttempts()) {
-            user.setLockedUntil(Instant.now().plus(Duration.ofMinutes(properties.getLockMinutes())));
-            user.setFailedAttempts(0);
+    private Failure registerFailure(String userId) {
+        Failure failure = failureTx.execute(status -> {
+            AppUser current = userRepository.findById(userId).orElseThrow();
+            int next = current.getFailedAttempts() + 1;
+            current.setFailedAttempts(next);
+            if (next >= properties.getMaxFailedAttempts()) {
+                current.setLockedUntil(Instant.now().plus(Duration.ofMinutes(properties.getLockMinutes())));
+                current.setFailedAttempts(0);
+            }
+            userRepository.saveAndFlush(current);
+            return new Failure(current.getFailedAttempts(), current.getLockedUntil());
+        });
+        if (failure == null) {
+            throw new IllegalStateException("无法记录登录失败");
         }
-        userRepository.save(user);
+        return failure;
+    }
+
+    private record Failure(int failedAttempts, Instant lockedUntil) {
+        boolean locked() {
+            return lockedUntil != null && Instant.now().isBefore(lockedUntil);
+        }
+    }
+
+    private String lockMessage(Instant until) {
+        long seconds = Duration.between(Instant.now(), until).getSeconds();
+        long minutes = Math.max(1, (seconds + 59) / 60);
+        return "尝试次数过多，请 " + minutes + " 分钟后再试";
     }
 
     private String normalizeUsername(String username) {

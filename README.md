@@ -2,6 +2,10 @@
 
 对应前端项目 `treasure-family-frontend`。每个账号只看自己的货。除注册和登录外，接口要带登录令牌。
 
+注册用户名 3 到 32 位，可以用中文、字母、数字和下划线。密码至少 8 位，并且要同时有字母和数字。
+
+同一个已有账号，密码连续输错会提示还剩几次。满 5 次锁定 15 分钟，当时就提示请多少分钟后再试。不存在的用户名不计次数。没有令牌不能访问货物和结账接口。
+
 ## 环境
 
 - JDK 17+
@@ -35,6 +39,10 @@ H2 控制台：http://localhost:8080/h2-console
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
+| POST | `/api/auth/register` | 注册并登录 |
+| POST | `/api/auth/login` | 登录。输错会返回剩余次数，锁定期返回还需等待的分钟数 |
+| POST | `/api/auth/logout` | 退出 |
+| GET | `/api/auth/me` | 当前登录用户 |
 | GET | `/api/goods` | 货物列表，可选 `keyword`、`category`、`onlyLow`、`sortBy` |
 | GET | `/api/goods/by-barcode` | 按条码查本店货物和公用名称 |
 | POST | `/api/goods/internal-barcode` | 发一张本店店内码 |
