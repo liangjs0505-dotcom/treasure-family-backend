@@ -11,7 +11,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-/** 已有库的条码列较短。Hibernate 不会把旧列自动加长，启动时扩到 16 位。 */
+/** 已有库的条码列较短。Hibernate 不会把旧列自动加长，启动时扩到当前上限。 */
 @Component
 public class BarcodeColumnWiden implements ApplicationRunner {
 

@@ -3,11 +3,11 @@ package com.treasurefamily.goods;
 import com.treasurefamily.common.BusinessException;
 import java.security.SecureRandom;
 
-/** 包装条码最长 16 位，不校验。以 2 开头的是店内码或称重码，不进公用名录。 */
+/** 包装条码最长 20 位，不校验。以 2 开头的是店内码或称重码，不进公用名录。 */
 public final class BarcodeCodes {
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    static final int MAX_LENGTH = 16;
+    static final int MAX_LENGTH = 20;
 
     private BarcodeCodes() {
     }
@@ -18,7 +18,7 @@ public final class BarcodeCodes {
             throw new BusinessException("条码不能为空");
         }
         if (code.length() > MAX_LENGTH) {
-            throw new BusinessException("条码最多 16 位");
+            throw new BusinessException("条码最多 " + MAX_LENGTH + " 位");
         }
         return code;
     }
