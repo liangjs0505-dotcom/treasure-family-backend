@@ -3,10 +3,11 @@ package com.treasurefamily.goods;
 import com.treasurefamily.common.BusinessException;
 import java.security.SecureRandom;
 
-/** EAN-13 校验。以 2 开头的是店内码或称重码，不进公用名录。 */
+/** 8、12、13、14 位商品码都收，校验位要对。以 2 开头的是店内码或称重码，不进公用名录。 */
 public final class BarcodeCodes {
 
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int[] LENGTHS = {8, 12, 13, 14};
 
     private BarcodeCodes() {
     }
@@ -27,10 +28,36 @@ public final class BarcodeCodes {
 
     public static String requireRetailOrLabel(String raw) {
         String code = normalize(raw);
-        if (code.length() != 13 || checkDigit(code.substring(0, 12)) != code.charAt(12)) {
+        if (!accepted(code)) {
             throw new BusinessException("条码不对，请再扫一次");
         }
         return code;
+    }
+
+    static boolean accepted(String code) {
+        if (code == null) {
+            return false;
+        }
+        int length = code.length();
+        boolean known = false;
+        for (int allowed : LENGTHS) {
+            if (length == allowed) {
+                known = true;
+                break;
+            }
+        }
+        if (!known) {
+            return false;
+        }
+        int sum = 0;
+        int body = length - 1;
+        for (int i = 0; i < body; i++) {
+            int digit = code.charAt(i) - '0';
+            int fromRight = body - 1 - i;
+            sum += (fromRight % 2 == 0) ? digit * 3 : digit;
+        }
+        int check = (10 - (sum % 10)) % 10;
+        return code.charAt(body) - '0' == check;
     }
 
     public static boolean internal(String code) {

@@ -27,7 +27,7 @@ public class Goods {
     @Column(name = "owner_id", length = 36)
     private String ownerId;
 
-    @Column(length = 13)
+    @Column(length = 14)
     private String barcode;
 
     @Column(nullable = false, length = 100)
