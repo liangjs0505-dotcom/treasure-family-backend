@@ -3,61 +3,24 @@ package com.treasurefamily.goods;
 import com.treasurefamily.common.BusinessException;
 import java.security.SecureRandom;
 
-/** 8、12、13、14 位商品码都收，校验位要对。以 2 开头的是店内码或称重码，不进公用名录。 */
+/** 包装条码最长 16 位，不校验。以 2 开头的是店内码或称重码，不进公用名录。 */
 public final class BarcodeCodes {
 
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static final int[] LENGTHS = {8, 12, 13, 14};
+    static final int MAX_LENGTH = 16;
 
     private BarcodeCodes() {
     }
 
-    public static String normalize(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        StringBuilder digits = new StringBuilder();
-        for (int i = 0; i < raw.length(); i++) {
-            char ch = raw.charAt(i);
-            if (ch >= '0' && ch <= '9') {
-                digits.append(ch);
-            }
-        }
-        return digits.toString();
-    }
-
     public static String requireRetailOrLabel(String raw) {
-        String code = normalize(raw);
-        if (!accepted(code)) {
-            throw new BusinessException("条码不对，请再扫一次");
+        String code = raw == null ? "" : raw.trim();
+        if (code.isEmpty()) {
+            throw new BusinessException("条码不能为空");
+        }
+        if (code.length() > MAX_LENGTH) {
+            throw new BusinessException("条码最多 16 位");
         }
         return code;
-    }
-
-    static boolean accepted(String code) {
-        if (code == null) {
-            return false;
-        }
-        int length = code.length();
-        boolean known = false;
-        for (int allowed : LENGTHS) {
-            if (length == allowed) {
-                known = true;
-                break;
-            }
-        }
-        if (!known) {
-            return false;
-        }
-        int sum = 0;
-        int body = length - 1;
-        for (int i = 0; i < body; i++) {
-            int digit = code.charAt(i) - '0';
-            int fromRight = body - 1 - i;
-            sum += (fromRight % 2 == 0) ? digit * 3 : digit;
-        }
-        int check = (10 - (sum % 10)) % 10;
-        return code.charAt(body) - '0' == check;
     }
 
     public static boolean internal(String code) {

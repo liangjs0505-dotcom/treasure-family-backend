@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 public class BarcodeCatalog {
 
     @Id
-    @Column(length = 14, nullable = false)
+    @Column(length = 16, nullable = false)
     private String barcode;
 
     @Column(nullable = false, length = 100)

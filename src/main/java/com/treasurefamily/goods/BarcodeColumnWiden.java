@@ -11,7 +11,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-/** 已有库的条码列是 13 位。Hibernate 不会把旧列自动加长，启动时扩到 14 位。 */
+/** 已有库的条码列较短。Hibernate 不会把旧列自动加长，启动时扩到 16 位。 */
 @Component
 public class BarcodeColumnWiden implements ApplicationRunner {
 
@@ -36,14 +36,14 @@ public class BarcodeColumnWiden implements ApplicationRunner {
             return;
         }
         int size = columnSize(meta, actualTable, column);
-        if (size < 0 || size >= 14) {
+        if (size < 0 || size >= BarcodeCodes.MAX_LENGTH) {
             return;
         }
         boolean mysql = meta.getDatabaseProductName().toLowerCase(Locale.ROOT).contains("mysql");
         String nullability = required ? " NOT NULL" : "";
         String sql = mysql
-                ? "ALTER TABLE " + actualTable + " MODIFY " + column + " VARCHAR(14)" + nullability
-                : "ALTER TABLE " + actualTable + " ALTER COLUMN " + column + " VARCHAR(14)" + nullability;
+                ? "ALTER TABLE " + actualTable + " MODIFY " + column + " VARCHAR(" + BarcodeCodes.MAX_LENGTH + ")" + nullability
+                : "ALTER TABLE " + actualTable + " ALTER COLUMN " + column + " VARCHAR(" + BarcodeCodes.MAX_LENGTH + ")" + nullability;
         try (Statement statement = connection.createStatement()) {
             statement.execute(sql);
         }
