@@ -17,7 +17,7 @@ import com.treasurefamily.sale.dto.TodaySummaryResponse;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -32,8 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SaleService {
-
-    private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
 
     private final SaleRepository saleRepository;
     private final SaleLineRepository saleLineRepository;
@@ -99,13 +97,14 @@ public class SaleService {
         sale.setSoldQty(soldQty);
         sale.setPayMethod(request.payMethod().name());
         saleRepository.save(sale);
-        return today();
+        return today(request.offset());
     }
 
     @Transactional(readOnly = true)
-    public TodaySummaryResponse today() {
+    public TodaySummaryResponse today(int offsetMinutes) {
         String ownerId = CurrentUser.require().userId();
-        long start = LocalDate.now(SHANGHAI).atStartOfDay(SHANGHAI).toInstant().toEpochMilli();
+        ZoneOffset zone = zone(offsetMinutes);
+        long start = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli();
         List<Sale> sales = saleRepository.findByOwnerIdAndCreatedAtGreaterThanEqual(ownerId, start);
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal profit = BigDecimal.ZERO;
@@ -127,10 +126,11 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public RankBoardResponse ranks() {
+    public RankBoardResponse ranks(int offsetMinutes) {
         String ownerId = CurrentUser.require().userId();
-        LocalDate today = LocalDate.now(SHANGHAI);
-        long monthStart = today.minusDays(30).atStartOfDay(SHANGHAI).toInstant().toEpochMilli();
+        ZoneOffset zone = zone(offsetMinutes);
+        LocalDate today = LocalDate.now(zone);
+        long monthStart = today.minusDays(30).atStartOfDay(zone).toInstant().toEpochMilli();
         Map<String, Goods> goodsById = goodsRepository.findByOwnerId(ownerId).stream()
                 .collect(Collectors.toMap(Goods::getId, goods -> goods, (left, right) -> left, LinkedHashMap::new));
 
@@ -200,9 +200,10 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public CompareResponse compare(String range) {
+    public CompareResponse compare(String range, int offsetMinutes) {
         String ownerId = CurrentUser.require().userId();
-        LocalDate today = LocalDate.now(SHANGHAI);
+        ZoneOffset zone = zone(offsetMinutes);
+        LocalDate today = LocalDate.now(zone);
         String raw = range == null ? "week" : range.trim().toLowerCase();
         String normalized = switch (raw) {
             case "month", "year" -> raw;
@@ -219,8 +220,8 @@ public class SaleService {
             default -> "day";
         };
         LocalDate from = buckets.get(0).start();
-        long start = from.atStartOfDay(SHANGHAI).toInstant().toEpochMilli();
-        long end = today.plusDays(1).atStartOfDay(SHANGHAI).toInstant().toEpochMilli();
+        long start = from.atStartOfDay(zone).toInstant().toEpochMilli();
+        long end = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli();
         List<Sale> sales = saleRepository.findByOwnerIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(ownerId, start, end);
 
         BigDecimal[] revenue = new BigDecimal[buckets.size()];
@@ -231,7 +232,7 @@ public class SaleService {
             profit[i] = BigDecimal.ZERO;
         }
         for (Sale sale : sales) {
-            LocalDate day = java.time.Instant.ofEpochMilli(sale.getCreatedAt()).atZone(SHANGHAI).toLocalDate();
+            LocalDate day = java.time.Instant.ofEpochMilli(sale.getCreatedAt()).atZone(zone).toLocalDate();
             int index = bucketIndex(buckets, day);
             if (index < 0) {
                 continue;
@@ -255,7 +256,7 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public SaleDetailResponse details(String fromText, String toText) {
+    public SaleDetailResponse details(String fromText, String toText, int offsetMinutes) {
         LocalDate from;
         LocalDate to;
         try {
@@ -273,8 +274,9 @@ public class SaleService {
             throw new BusinessException("最多选择一个月");
         }
         String ownerId = CurrentUser.require().userId();
-        long start = from.atStartOfDay(SHANGHAI).toInstant().toEpochMilli();
-        long end = to.plusDays(1).atStartOfDay(SHANGHAI).toInstant().toEpochMilli();
+        ZoneOffset zone = zone(offsetMinutes);
+        long start = from.atStartOfDay(zone).toInstant().toEpochMilli();
+        long end = to.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli();
         List<Sale> sales = saleRepository.findByOwnerIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(ownerId, start, end);
         sales.sort(Comparator.comparing(Sale::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
         List<String> saleIds = sales.stream().map(Sale::getId).toList();
@@ -431,6 +433,13 @@ public class SaleService {
             case "slow" -> 2;
             default -> 3;
         };
+    }
+
+    private static ZoneOffset zone(int offsetMinutes) {
+        if (offsetMinutes < -16 * 60 || offsetMinutes > 16 * 60) {
+            throw new BusinessException("时区不正确");
+        }
+        return ZoneOffset.ofTotalSeconds(-offsetMinutes * 60);
     }
 
     private String requireSaleId(Sale sale) {

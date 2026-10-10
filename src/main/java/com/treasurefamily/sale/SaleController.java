@@ -30,22 +30,24 @@ public class SaleController {
     }
 
     @GetMapping("/sales/today")
-    public ApiResponse<TodaySummaryResponse> today() {
-        return ApiResponse.ok(saleService.today());
+    public ApiResponse<TodaySummaryResponse> today(@RequestParam int offset) {
+        return ApiResponse.ok(saleService.today(offset));
     }
 
     @GetMapping("/sales/compare")
-    public ApiResponse<CompareResponse> compare(@RequestParam(defaultValue = "week") String range) {
-        return ApiResponse.ok(saleService.compare(range));
+    public ApiResponse<CompareResponse> compare(
+            @RequestParam(defaultValue = "week") String range, @RequestParam int offset) {
+        return ApiResponse.ok(saleService.compare(range, offset));
     }
 
     @GetMapping("/sales/ranks")
-    public ApiResponse<RankBoardResponse> ranks() {
-        return ApiResponse.ok(saleService.ranks());
+    public ApiResponse<RankBoardResponse> ranks(@RequestParam int offset) {
+        return ApiResponse.ok(saleService.ranks(offset));
     }
 
     @GetMapping("/sales/details")
-    public ApiResponse<SaleDetailResponse> details(@RequestParam String from, @RequestParam String to) {
-        return ApiResponse.ok(saleService.details(from, to));
+    public ApiResponse<SaleDetailResponse> details(
+            @RequestParam String from, @RequestParam String to, @RequestParam int offset) {
+        return ApiResponse.ok(saleService.details(from, to, offset));
     }
 }

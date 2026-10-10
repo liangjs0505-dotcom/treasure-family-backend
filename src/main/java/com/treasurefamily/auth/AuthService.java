@@ -66,15 +66,22 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse register(String rawUsername, String rawPassword) {
+    public LoginResponse register(String rawUsername, String rawPassword, String rawAdminPassword) {
         String username = normalizeUsername(rawUsername);
         if (username.equals(normalizeUsername(properties.getAdminUsername()))
                 || userRepository.findByUsernameIgnoreCase(username).isPresent()) {
             throw new BusinessException(HttpStatus.CONFLICT, "用户名已被占用");
         }
+        if (rawAdminPassword == null || rawAdminPassword.isBlank()) {
+            throw new BusinessException("管理员密码不能为空");
+        }
+        if (rawAdminPassword.length() < 5 || rawAdminPassword.length() > 8) {
+            throw new BusinessException("管理员密码须为 5 到 8 位");
+        }
         AppUser user = new AppUser();
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        user.setAdminPasswordHash(passwordEncoder.encode(rawAdminPassword));
         user.setEnabled(true);
         try {
             userRepository.save(user);
@@ -112,6 +119,41 @@ public class AuthService {
         userRepository.save(user);
         String token = jwtService.createToken(user.getId(), user.getUsername());
         return new LoginResponse(token, "Bearer", jwtService.expiresInSeconds(), user.getUsername());
+    }
+
+    public void requireAdminPassword(String password) {
+        AppUser user = currentUser();
+        if (!adminPasswordMatches(user, password)) {
+            passwordEncoder.matches(password, dummyHash);
+            throw new BusinessException("管理员密码不正确");
+        }
+    }
+
+    @Transactional
+    public void resetAdminPassword(String currentPassword, String newPassword) {
+        if (newPassword == null || newPassword.isBlank() || newPassword.length() < 5 || newPassword.length() > 8) {
+            throw new BusinessException("管理员密码须为 5 到 8 位");
+        }
+        AppUser user = currentUser();
+        if (!adminPasswordMatches(user, currentPassword)) {
+            passwordEncoder.matches(currentPassword, dummyHash);
+            throw new BusinessException("原密码不正确");
+        }
+        user.setAdminPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    private AppUser currentUser() {
+        return userRepository.findById(CurrentUser.require().userId())
+                .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "未登录"));
+    }
+
+    private boolean adminPasswordMatches(AppUser user, String password) {
+        String hash = user.getAdminPasswordHash();
+        if (hash == null || hash.isBlank()) {
+            return "admin".equals(password);
+        }
+        return passwordEncoder.matches(password, hash);
     }
 
     private Failure registerFailure(String userId) {

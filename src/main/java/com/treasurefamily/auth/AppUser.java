@@ -22,6 +22,9 @@ public class AppUser {
     @Column(nullable = false, length = 100)
     private String passwordHash;
 
+    @Column(length = 100)
+    private String adminPasswordHash;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -69,6 +72,14 @@ public class AppUser {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public String getAdminPasswordHash() {
+        return adminPasswordHash;
+    }
+
+    public void setAdminPasswordHash(String adminPasswordHash) {
+        this.adminPasswordHash = adminPasswordHash;
     }
 
     public boolean isEnabled() {

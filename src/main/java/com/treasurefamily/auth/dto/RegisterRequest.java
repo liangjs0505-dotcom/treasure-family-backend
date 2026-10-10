@@ -12,5 +12,8 @@ public record RegisterRequest(
         @NotBlank(message = "不能为空")
         @Size(min = 8, max = 72, message = "密码至少 8 位")
         @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "须同时包含字母和数字")
-        String password) {
+        String password,
+        @NotBlank(message = "不能为空")
+        @Size(min = 5, max = 8, message = "须为 5 到 8 位")
+        String adminPassword) {
 }
